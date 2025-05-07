@@ -22,33 +22,18 @@ public class LoginInterceptor implements HandlerInterceptor {
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
-        //获取请求头中的token
-        String token = request.getHeader("authorization");
-        if (StrUtil.isBlank(token)) {
-            //token为空，拦截
+        //判断是否需要拦截
+        if (UserHolder.getUser() == null) {
+            //拦截
             response.setStatus(401);
             return false;
         }
-        //获取redis中的用户
-        String key = RedisConstants.LOGIN_USER_KEY + token;
-        Map<Object, Object> userMap = stringRedisTemplate.opsForHash()
-                .entries(key);
-        // 判断用户是否存在, 不存在，拦截
-        if (userMap.isEmpty()) {
-            response.setStatus(401);
-            return false;
-        }
-        //将查询到的hash数据转为UserDTO
-        UserDTO userDTO = BeanUtil.fillBeanWithMap(userMap, new UserDTO(), false);
-        //保存用户信息到ThreadLocal
-        UserHolder.saveUser(userDTO);
-        //刷新token有效期
-        stringRedisTemplate.expire(key, RedisConstants.LOGIN_USER_TTL, TimeUnit.SECONDS);
+        //放行
         return true;
     }
 
     @Override
     public void afterCompletion(HttpServletRequest request, HttpServletResponse response, Object handler, Exception ex) throws Exception {
-
+        UserHolder.removeUser();
     }
 }
